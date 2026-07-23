@@ -29,7 +29,7 @@ export function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-export function fileToBase64(file: File): Promise<string> {
+export function fileToBase64(file: File | Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {

@@ -1,11 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Mail, ArrowLeft, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p className="text-surface-400">Loading...</p></div>}>
+      <AuthForm />
+    </Suspense>
+  );
+}
+
+function AuthForm() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
