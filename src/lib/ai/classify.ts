@@ -17,9 +17,9 @@ Return ONLY a JSON object (no markdown, no code blocks) with exactly these field
 }`;
 
 export async function classifyClothingImage(imageBase64: string): Promise<ClassificationResult> {
-  const apiKey = process.env.AI_API_KEY;
-  const baseUrl = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
-  const model = process.env.AI_MODEL || 'gpt-4o-mini';
+  const apiKey = process.env.NEXT_PUBLIC_AI_API_KEY || process.env.AI_API_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_AI_BASE_URL || process.env.AI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
+  const model = process.env.NEXT_PUBLIC_AI_MODEL || process.env.AI_MODEL || 'gemini-2.0-flash';
 
   if (!apiKey) {
     // Dev mode: return a reasonable default
@@ -97,9 +97,9 @@ function getMockClassification(): ClassificationResult {
 
 // Parse order text to extract clothing info
 export async function parseOrderDetails(orderText: string): Promise<Partial<ClassificationResult> & { brand?: string; price?: number }> {
-  const apiKey = process.env.AI_API_KEY;
-  const baseUrl = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
-  const model = process.env.AI_MODEL || 'gpt-4o-mini';
+  const apiKey = process.env.NEXT_PUBLIC_AI_API_KEY || process.env.AI_API_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_AI_BASE_URL || process.env.AI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai';
+  const model = process.env.NEXT_PUBLIC_AI_MODEL || process.env.AI_MODEL || 'gemini-2.0-flash';
 
   if (!apiKey) {
     return { suggested_name: 'Ordered Item', category: 'top', confidence: 0.3 };
