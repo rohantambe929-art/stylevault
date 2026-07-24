@@ -52,39 +52,72 @@ async function callVisionApi(prompt: string, imageBase64: string): Promise<strin
     throw new Error('NO_API_KEY: Add your free Gemini API key in settings');
   }
 
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
+  // Retry up to 3 times with backoff (handles 429 rate limits)
+  let lastError = '';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      const waitMs = attempt * 15000; // 15s, 30s backoff
+      await new Promise(r => setTimeout(r, waitMs));
+    }
+
+    try {
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
             {
-              type: 'image_url',
-              image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                {
+                  type: 'image_url',
+                  image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
+                },
+              ],
             },
           ],
-        },
-      ],
-      max_tokens: 1000,
-      temperature: 0.2,
-    }),
-  });
+          max_tokens: 1000,
+          temperature: 0.2,
+        }),
+      });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`API_ERROR_${res.status}: ${errorText.slice(0, 200)}`);
+      if (res.status === 429) {
+        const body = await res.text();
+        const retryMatch = body.match(/retryDelay.*?(\d+)s/);
+        const waitSecs = retryMatch ? parseInt(retryMatch[1]) : 30;
+        lastError = `RATE_LIMITED: Gemini free tier limit hit. Auto-retrying in ${waitSecs}s... (attempt ${attempt + 1}/3)`;
+        console.warn(lastError);
+        if (attempt < 2) {
+          // Wait the suggested retry time (capped at 60s)
+          await new Promise(r => setTimeout(r, Math.min(waitSecs, 60) * 1000));
+        }
+        continue;
+      }
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`API_ERROR_${res.status}: ${errorText.slice(0, 200)}`);
+      }
+
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content || '';
+      if (!content) throw new Error('Empty response from AI');
+      return content;
+    } catch (err: any) {
+      if (err.message?.startsWith('RATE_LIMITED')) {
+        lastError = err.message;
+        continue;
+      }
+      throw err;
+    }
   }
 
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content || '';
-  return content;
+  throw new Error(lastError || 'AI classification failed after 3 attempts. Wait 1 minute and try again.');
 }
 
 function parseClassification(raw: string): ClassificationResult {
